@@ -58,3 +58,13 @@ data class DataChangedMessage(
         val type: ChangedType,
         val direction: ChangedDirection
 )
+data class HostAddress(
+        val ip:String,
+        val port:Int
+)
+data class HostInfo(
+        val isRoot:Boolean?,
+        val nodeId:String?,
+        val secret:String?,
+        val parentAddress:HostAddress?
+)

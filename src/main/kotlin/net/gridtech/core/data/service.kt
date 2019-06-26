@@ -1,10 +1,9 @@
 package net.gridtech.core.data
 
-import io.reactivex.subjects.PublishSubject
+import net.gridtech.core.util.dataChangedPublisher
 import java.util.concurrent.ConcurrentHashMap
 import javax.annotation.PostConstruct
 
-val dataChangedPublisher: PublishSubject<DataChangedMessage> = PublishSubject.create()
 
 abstract class IBaseService<T : IBaseData>(enableCache: Boolean, protected val dao: IBaseDao<T>) {
     val serviceName: String = javaClass.simpleName
@@ -25,12 +24,15 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, protected val d
         var data = cache?.get(id)
         if (data == null) {
             data = dao.getById(id)
+        } else {
+            return data
         }
         if (data != null) {
             cache?.put(id, data)
         }
         return data
     }
+
     open fun save(data: T, direction: ChangedDirection? = null) {
         cache?.put(data.id, data)
         dao.save(data)
