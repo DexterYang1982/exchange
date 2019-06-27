@@ -2,13 +2,11 @@ package net.gridtech.core
 
 import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
-import net.gridtech.core.util.ID_NODE_ROOT
 import net.gridtech.core.util.hostInfoPublisher
 
-var hostInfo: HostInfo? = null
+var hostInfo: IHostInfo? = null
 
 class Bootstrap(
-        initHostInfo: HostInfo?,
         enableCache: Boolean,
         nodeClassDao: INodeClassDao,
         fieldDao: IFieldDao,
@@ -19,19 +17,11 @@ class Bootstrap(
     val fieldService = FieldService(enableCache, fieldDao)
     val nodeService = NodeService(enableCache, nodeDao)
     val fieldValueService = FieldValueService(enableCache, fieldValueDao)
+
     val hostSlave = HostSlave()
 
     init {
-        hostInfoPublisher.subscribe { initHost(it) }
-        initHostInfo?.apply { hostInfoPublisher.onNext(this) }
+        hostInfoPublisher.subscribe { hostInfo = it }
     }
 
-    private fun initHost(hi: HostInfo) {
-        hostInfo = hi
-        if (hostInfo?.isRoot == true && nodeService.getById(ID_NODE_ROOT) == null) {
-            TODO("init blank root host")
-        } else if (hostInfo?.isRoot != true) {
-            TODO("connect to parent")
-        }
-    }
 }

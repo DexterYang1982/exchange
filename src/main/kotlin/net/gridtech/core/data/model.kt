@@ -26,7 +26,7 @@ interface IField : IStructureData {
 interface INode : IStructureData {
     var nodeClassId: String
     var path: List<String>
-    var scopes: List<Scope>
+    var externalScope: List<String>
 }
 
 interface IFieldValue : IBaseData {
@@ -35,12 +35,6 @@ interface IFieldValue : IBaseData {
     var value: String
     var session: String
 }
-
-data class Scope(
-        var branchNodeId: String,
-        var branchNodeTags: List<String>
-)
-
 
 enum class ChangedType {
     UPDATE,
@@ -52,19 +46,16 @@ enum class ChangedDirection {
     DOWN,
     BOTH
 }
+
 data class DataChangedMessage(
         val dataId: String,
         val serviceName: String,
         val type: ChangedType,
         val direction: ChangedDirection
 )
-data class HostAddress(
-        val ip:String,
-        val port:Int
-)
-data class HostInfo(
-        val isRoot:Boolean?,
-        val nodeId:String?,
-        val secret:String?,
-        val parentAddress:HostAddress?
-)
+
+interface IHostInfo {
+    var nodeId: String
+    var nodeSecret: String
+    var parentAddress: String?
+}
