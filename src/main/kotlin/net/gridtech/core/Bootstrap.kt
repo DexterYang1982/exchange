@@ -4,7 +4,6 @@ import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
 import net.gridtech.core.util.hostInfoPublisher
 
-var hostInfo: IHostInfo? = null
 
 class Bootstrap(
         enableCache: Boolean,
@@ -22,6 +21,9 @@ class Bootstrap(
 
     init {
         hostInfoPublisher.subscribe { hostInfo = it }
+    }
+    companion object{
+        var hostInfo: IHostInfo? = null
     }
 
 }
