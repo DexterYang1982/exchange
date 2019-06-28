@@ -6,7 +6,6 @@ import net.gridtech.core.util.currentTime
 import net.gridtech.core.util.dataChangedPublisher
 import java.util.concurrent.ConcurrentHashMap
 
-
 abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao: IBaseDao<T>) {
     val serviceName: String = javaClass.simpleName
     protected val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
