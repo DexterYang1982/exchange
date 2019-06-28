@@ -108,35 +108,36 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
         val structureDataServiceToSync = ArrayList<IBaseService<*>>()
         override fun beginToSync(content: String, serviceName: String?) {
             structureDataServiceToSync.clear()
-            structureDataServiceToSync.add(IBaseService.get(NodeClassService::class.simpleName!!))
-            structureDataServiceToSync.add(IBaseService.get(FieldService::class.simpleName!!))
-            structureDataServiceToSync.add(IBaseService.get(NodeService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.service(NodeClassService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.service(FieldService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.service(NodeService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.service(FieldValueService::class.simpleName!!))
             serviceSyncFinishedFromMaster("", null)
         }
 
         override fun serviceSyncFinishedFromMaster(content: String, serviceName: String?) {
-            val service =
-                    if (structureDataServiceToSync.isEmpty()) {
-                        bootstrap.fieldValueService
-                    } else {
-                        structureDataServiceToSync.removeAt(0)
-                    }
-            service.getAll().forEach {
-                send(IMaster<*>::dataShellFromSlave, DataShell(it.id, it.updateTime), service.serviceName)
+            if (structureDataServiceToSync.isEmpty()) {
+                null
+            } else {
+                structureDataServiceToSync.removeAt(0)
+            }?.let { service ->
+                service.getAll().forEach {
+                    send(IMaster<*>::dataShellFromSlave, DataShell(it.id, it.updateTime), service.serviceName)
+                }
+                send(IMaster<*>::serviceSyncFinishedFromSlave, "", service.serviceName)
             }
-            send(IMaster<*>::serviceSyncFinishedFromSlave, "", service.serviceName)
         }
 
         override fun dataUpdate(content: String, serviceName: String?) {
             serviceName?.apply {
-                IBaseService.get(this).saveFromRemote(content, parentHostPeer!!)
+                IBaseService.service(this).saveFromRemote(content, parentHostPeer!!)
             }
         }
 
         override fun dataDelete(content: String, serviceName: String?) {
             val id: String = parse(content)
             serviceName?.apply {
-                IBaseService.get(this).delete(id, parentHostPeer!!)
+                IBaseService.service(this).delete(id, parentHostPeer!!)
             }
         }
 

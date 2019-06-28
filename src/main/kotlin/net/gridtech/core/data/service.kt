@@ -17,7 +17,7 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
 
     companion object {
         val services = HashMap<String, IBaseService<*>>()
-        fun get(name: String): IBaseService<*> {
+        fun service(name: String): IBaseService<*> {
             return services[name]!!
         }
     }
@@ -70,7 +70,7 @@ class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao) : IBas
     override fun parseData(content: String): IField = FieldStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<IField> = fieldDao.getByNodeClassId(nodeClass.id)
     override fun delete(id: String, peer: String?) {
-        val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
+        val fieldValueService = service(FieldValueService::class.simpleName!!) as FieldValueService
         getById(id)?.apply {
             fieldValueService.getByField(this).forEach {
                 fieldValueService.delete(it.id)
@@ -101,7 +101,7 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
             }
 
     override fun delete(id: String, peer: String?) {
-        val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
+        val fieldValueService = service(FieldValueService::class.simpleName!!) as FieldValueService
         getById(id)?.apply {
             fieldValueService.getByNode(this).forEach {
                 fieldValueService.delete(it.id)
@@ -117,9 +117,12 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
     fun getByField(field: IField): List<IFieldValue> = fieldValueDao.getByFieldId(field.id)
     fun getSince(id: String, since: Long) = fieldValueDao.getSince(id, since)
 
+    fun valueSyncToChild(childNodeId: String, valueNode: INode, valueField: IField): Boolean =
+            valueNode.id == childNodeId || valueNode.path.contains(childNodeId) || valueField.through
+
     fun getFieldValueByFieldKey(nodeId: String, fieldKey: String): IFieldValue? {
-        val nodeService = get(NodeService::class.simpleName!!) as NodeService
-        val fieldService = get(FieldService::class.simpleName!!) as FieldService
+        val nodeService = service(NodeService::class.simpleName!!) as NodeService
+        val fieldService = service(FieldService::class.simpleName!!) as FieldService
         return nodeService.getById(nodeId)?.let { node ->
             fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
                 getById(compose(node.id, field.id))
@@ -128,8 +131,8 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
     }
 
     fun setFieldValueByFieldKey(nodeId: String, fieldKey: String, value: String, session: String? = null) {
-        val nodeService = get(NodeService::class.simpleName!!) as NodeService
-        val fieldService = get(FieldService::class.simpleName!!) as FieldService
+        val nodeService = service(NodeService::class.simpleName!!) as NodeService
+        val fieldService = service(FieldService::class.simpleName!!) as FieldService
         nodeService.getById(nodeId)?.let { node ->
             fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
                 save(FieldValueStub(
