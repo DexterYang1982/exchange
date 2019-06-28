@@ -60,7 +60,6 @@ data class RunningStatus(
 )
 
 data class ChildScope(
-        val nodeClassScope: MutableSet<String>,
-        val nodeScope: MutableSet<String>,
+        val scope: Map<String, MutableSet<String>>,
         val sync: Map<String, MutableList<String>>
 )

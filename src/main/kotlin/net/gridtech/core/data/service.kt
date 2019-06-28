@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao: IBaseDao<T>) {
     val serviceName: String = javaClass.simpleName
-    private val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
+    protected val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
 
     init {
         services[serviceName] = this
@@ -97,6 +97,11 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
 
     private fun getNodeBranchScope(branchNode: INode): MutableSet<INode> =
             getByBranch(branchNode).toMutableSet().apply {
+                branchNode.path.forEach { parentId ->
+                    getById(parentId)?.let { parentNode ->
+                        add(parentNode)
+                    }
+                }
                 add(branchNode)
             }
 
@@ -112,7 +117,13 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
 }
 
 class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
+
     override fun parseData(content: String): IFieldValue = FieldValueStub.parseFromString(content)
+    override fun delete(id: String, peer: String?) {
+        cache?.remove(id)
+        fieldValueDao.delete(id)
+    }
+
     fun getByNode(node: INode): List<IFieldValue> = fieldValueDao.getByNodeId(node.id)
     fun getByField(field: IField): List<IFieldValue> = fieldValueDao.getByFieldId(field.id)
     fun getSince(id: String, since: Long) = fieldValueDao.getSince(id, since)

@@ -25,11 +25,11 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 .filter { currentConnection == null }
                 .subscribe { connectToParent() }
         dataChangedPublisher
-                .filter {
-                    it.serviceName == FieldValueService::class.simpleName!!
+                .filter {message->
+                    message.serviceName == FieldValueService::class.simpleName!!
                             && currentConnection != null
                             && parentHostPeer != null
-                            && it.peer != parentHostPeer
+                            && message.peer != parentHostPeer
                 }
                 .subscribeOn(io())
                 .subscribe {
