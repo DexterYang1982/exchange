@@ -1,5 +1,7 @@
 package net.gridtech.core.data
 
+import net.gridtech.core.util.parse
+
 
 data class NodeClassStub(
         override var id: String,
@@ -9,7 +11,11 @@ data class NodeClassStub(
         override var connectable: Boolean,
         override var tags: List<String>,
         override var updateTime: Long
-) : INodeClass
+) : INodeClass {
+    companion object {
+        fun parseFromString(content: String): NodeClassStub = parse(content)
+    }
+}
 
 data class FieldStub(
         override var id: String,
@@ -20,7 +26,11 @@ data class FieldStub(
         override var nodeClassId: String,
         override var through: Boolean,
         override var updateTime: Long
-) : IField
+) : IField{
+    companion object {
+        fun parseFromString(content: String): FieldStub = parse(content)
+    }
+}
 
 data class NodeStub(
         override var id: String,
@@ -32,7 +42,11 @@ data class NodeStub(
         override var path: List<String>,
         override var externalScope: List<String>,
         override var updateTime: Long
-) : INode
+) : INode{
+    companion object {
+        fun parseFromString(content: String): NodeStub = parse(content)
+    }
+}
 
 data class FieldValueStub(
         override var id: String,
@@ -41,4 +55,8 @@ data class FieldValueStub(
         override var value: String,
         override var updateTime: Long,
         override var session: String
-) : IFieldValue
+) : IFieldValue{
+    companion object {
+        fun parseFromString(content: String): FieldValueStub = parse(content)
+    }
+}

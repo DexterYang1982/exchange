@@ -3,7 +3,7 @@ package net.gridtech.core.exchange
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers.io
 import net.gridtech.core.Bootstrap
-import net.gridtech.core.data.FieldValueService
+import net.gridtech.core.data.*
 import net.gridtech.core.util.*
 import okhttp3.Request
 import okhttp3.Response
@@ -11,8 +11,10 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 import kotlin.reflect.KFunction
+import kotlin.reflect.full.declaredMemberFunctions
 
 class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
+    private val commandMap: Map<String, KFunction<*>> = ISlave::class.declaredMemberFunctions.associateBy { it.name }
     var currentConnection: WebSocket? = null
     var parentHostPeer: String? = null
 
@@ -64,6 +66,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     override fun onMessage(webSocket: WebSocket, text: String) {
         try {
             val exchangeParcel: ExchangeParcel = parse(text)
+            commandMap[exchangeParcel.command]?.call(handler, exchangeParcel.content, exchangeParcel.serviceName)
         } catch (e: Throwable) {
             e.printStackTrace()
         }
@@ -86,7 +89,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
             currentConnection?.send(
                     stringfy(ExchangeParcel(
                             command = function.name,
-                            content = objectMapper.writeValueAsString(content),
+                            content = stringfy(content),
                             serviceName = serviceName
                     )))
         } catch (e: Throwable) {
@@ -98,5 +101,50 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
         currentConnection?.cancel()
         currentConnection = null
         parentHostPeer = null
+    }
+
+
+    private val handler: ISlave = object : ISlave {
+        val structureDataServiceToSync = ArrayList<IBaseService<*>>()
+        override fun beginToSync(content: String, serviceName: String?) {
+            structureDataServiceToSync.clear()
+            structureDataServiceToSync.add(IBaseService.get(NodeClassService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.get(FieldService::class.simpleName!!))
+            structureDataServiceToSync.add(IBaseService.get(NodeService::class.simpleName!!))
+            serviceSyncFinishedFromMaster("", null)
+        }
+
+        override fun serviceSyncFinishedFromMaster(content: String, serviceName: String?) {
+            val service =
+                    if (structureDataServiceToSync.isEmpty()) {
+                        bootstrap.fieldValueService
+                    } else {
+                        structureDataServiceToSync.removeAt(0)
+                    }
+            service.getAll().forEach {
+                send(IMaster<*>::dataShellFromSlave, DataShell(it.id, it.updateTime), service.serviceName)
+            }
+            send(IMaster<*>::serviceSyncFinishedFromSlave, "", service.serviceName)
+        }
+
+        override fun dataUpdate(content: String, serviceName: String?) {
+            serviceName?.apply {
+                IBaseService.get(this).saveFromRemote(content, parentHostPeer!!)
+            }
+        }
+
+        override fun dataDelete(content: String, serviceName: String?) {
+            val id: String = parse(content)
+            serviceName?.apply {
+                IBaseService.get(this).delete(id, parentHostPeer!!)
+            }
+        }
+
+        override fun fieldValueAskFor(content: String, serviceName: String?) {
+            val dataShell: DataShell = parse(content)
+            bootstrap.fieldValueService.getSince(dataShell.id, dataShell.updateTime).sortedBy { it.updateTime }.forEach {
+                send(IMaster<*>::fieldValueUpdate, it)
+            }
+        }
     }
 }

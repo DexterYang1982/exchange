@@ -47,6 +47,9 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
         ))
     }
 
+    fun saveFromRemote(content: String, peer: String) = save(parseData(content), peer)
+    abstract fun parseData(content: String): T
+
     open fun delete(id: String, peer: String? = null) {
         cache?.remove(id)
         dao.delete(id)
@@ -60,9 +63,11 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
 }
 
 class NodeClassService(enableCache: Boolean, dao: INodeClassDao) : IBaseService<INodeClass>(enableCache, dao) {
+    override fun parseData(content: String): INodeClass = NodeClassStub.parseFromString(content)
 }
 
 class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao) : IBaseService<IField>(enableCache, fieldDao) {
+    override fun parseData(content: String): IField = FieldStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<IField> = fieldDao.getByNodeClassId(nodeClass.id)
     override fun delete(id: String, peer: String?) {
         val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
@@ -71,13 +76,30 @@ class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao) : IBas
                 fieldValueService.delete(it.id)
             }
         }
-        super.delete(id,peer)
+        super.delete(id, peer)
     }
 }
 
 class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseService<INode>(enableCache, nodeDao) {
+    override fun parseData(content: String): INode = NodeStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<INode> = nodeDao.getByNodeClassId(nodeClass.id)
     fun getByBranch(branchNode: INode): List<INode> = nodeDao.getByBranchNodeId(branchNode.id)
+    fun getNodeScope(id: String): Set<INode> =
+            getById(id)?.let { node ->
+                val scope = getNodeBranchScope(node)
+                node.externalScope.forEach { branchNodeId ->
+                    scope.addAll(getById(branchNodeId)?.let { branchNode ->
+                        getNodeBranchScope(branchNode)
+                    } ?: emptySet())
+                }
+                scope
+            } ?: emptySet()
+
+    private fun getNodeBranchScope(branchNode: INode): MutableSet<INode> =
+            getByBranch(branchNode).toMutableSet().apply {
+                add(branchNode)
+            }
+
     override fun delete(id: String, peer: String?) {
         val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
         getById(id)?.apply {
@@ -85,13 +107,15 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
                 fieldValueService.delete(it.id)
             }
         }
-        super.delete(id,peer)
+        super.delete(id, peer)
     }
 }
 
 class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
+    override fun parseData(content: String): IFieldValue = FieldValueStub.parseFromString(content)
     fun getByNode(node: INode): List<IFieldValue> = fieldValueDao.getByNodeId(node.id)
     fun getByField(field: IField): List<IFieldValue> = fieldValueDao.getByFieldId(field.id)
+    fun getSince(id: String, since: Long) = fieldValueDao.getSince(id, since)
 
     fun getFieldValueByFieldKey(nodeId: String, fieldKey: String): IFieldValue? {
         val nodeService = get(NodeService::class.simpleName!!) as NodeService

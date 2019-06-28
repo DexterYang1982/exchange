@@ -58,3 +58,9 @@ data class RunningStatus(
         var peer: String,
         var connectedToParentPeer: String?
 )
+
+data class ChildScope(
+        val nodeClassScope: MutableSet<String>,
+        val nodeScope: MutableSet<String>,
+        val sync: Map<String, MutableList<String>>
+)
