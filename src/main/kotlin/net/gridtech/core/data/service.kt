@@ -1,5 +1,6 @@
 package net.gridtech.core.data
 
+import net.gridtech.core.util.PEER_ID
 import net.gridtech.core.util.compose
 import net.gridtech.core.util.currentTime
 import net.gridtech.core.util.dataChangedPublisher
@@ -35,25 +36,25 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
         return data
     }
 
-    open fun save(data: T, direction: ChangedDirection? = null) {
+    open fun save(data: T, peer: String? = null) {
         cache?.put(data.id, data)
         dao.save(data)
         dataChangedPublisher.onNext(DataChangedMessage(
                 data.id,
                 serviceName,
                 ChangedType.UPDATE,
-                direction ?: ChangedDirection.DOWN
+                peer ?: PEER_ID
         ))
     }
 
-    open fun delete(id: String) {
+    open fun delete(id: String, peer: String? = null) {
         cache?.remove(id)
         dao.delete(id)
         dataChangedPublisher.onNext(DataChangedMessage(
                 id,
                 serviceName,
                 ChangedType.DELETE,
-                ChangedDirection.DOWN
+                peer ?: PEER_ID
         ))
     }
 }
@@ -63,28 +64,28 @@ class NodeClassService(enableCache: Boolean, dao: INodeClassDao) : IBaseService<
 
 class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao) : IBaseService<IField>(enableCache, fieldDao) {
     fun getByNodeClass(nodeClass: INodeClass): List<IField> = fieldDao.getByNodeClassId(nodeClass.id)
-    override fun delete(id: String) {
+    override fun delete(id: String, peer: String?) {
         val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
         getById(id)?.apply {
             fieldValueService.getByField(this).forEach {
                 fieldValueService.delete(it.id)
             }
         }
-        super.delete(id)
+        super.delete(id,peer)
     }
 }
 
 class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseService<INode>(enableCache, nodeDao) {
     fun getByNodeClass(nodeClass: INodeClass): List<INode> = nodeDao.getByNodeClassId(nodeClass.id)
     fun getByBranch(branchNode: INode): List<INode> = nodeDao.getByBranchNodeId(branchNode.id)
-    override fun delete(id: String) {
+    override fun delete(id: String, peer: String?) {
         val fieldValueService = get(FieldValueService::class.simpleName!!) as FieldValueService
         getById(id)?.apply {
             fieldValueService.getByNode(this).forEach {
                 fieldValueService.delete(it.id)
             }
         }
-        super.delete(id)
+        super.delete(id,peer)
     }
 }
 
@@ -114,7 +115,7 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
                         value = value,
                         session = session ?: "",
                         updateTime = currentTime()
-                ), ChangedDirection.BOTH)
+                ), PEER_ID)
             }
         }
     }

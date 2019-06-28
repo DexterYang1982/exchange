@@ -41,17 +41,11 @@ enum class ChangedType {
     DELETE
 }
 
-enum class ChangedDirection {
-    UP,
-    DOWN,
-    BOTH
-}
-
 data class DataChangedMessage(
         val dataId: String,
         val serviceName: String,
         val type: ChangedType,
-        val direction: ChangedDirection
+        val peer: String
 )
 
 interface IHostInfo {
@@ -59,3 +53,10 @@ interface IHostInfo {
     var nodeSecret: String
     var parentAddress: String?
 }
+
+data class RunningStatus(
+        var nodeId: String,
+        var peer: String,
+        var connectedToParentNodeId: String?,
+        var connectedToParentPeer: String?
+)
