@@ -116,7 +116,6 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
 }
 
 class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
-
     override fun parseData(content: String): IFieldValue = FieldValueStub.parseFromString(content)
     override fun delete(id: String, peer: String?) {
         cache?.remove(id)

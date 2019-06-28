@@ -25,7 +25,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 .filter { currentConnection == null }
                 .subscribe { connectToParent() }
         dataChangedPublisher
-                .filter {message->
+                .filter { message ->
                     message.serviceName == FieldValueService::class.simpleName!!
                             && currentConnection != null
                             && parentHostPeer != null
@@ -66,6 +66,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     override fun onMessage(webSocket: WebSocket, text: String) {
         try {
             val exchangeParcel: ExchangeParcel = parse(text)
+            println("slave->$exchangeParcel")
             commandMap[exchangeParcel.command]?.call(handler, exchangeParcel.content, exchangeParcel.serviceName)
         } catch (e: Throwable) {
             e.printStackTrace()
@@ -120,25 +121,21 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 null
             } else {
                 structureDataServiceToSync.removeAt(0)
-            }?.let { service ->
-                service.getAll().forEach {
-                    send(IMaster<*>::dataShellFromSlave, DataShell(it.id, it.updateTime), service.serviceName)
+            }?.apply {
+                this.getAll().forEach {
+                    send(IMaster<*>::dataShellFromSlave, DataShell(it.id, it.updateTime), this.serviceName)
                 }
-                send(IMaster<*>::serviceSyncFinishedFromSlave, "", service.serviceName)
+                send(IMaster<*>::serviceSyncFinishedFromSlave, "", this.serviceName)
             }
         }
 
         override fun dataUpdate(content: String, serviceName: String?) {
-            serviceName?.apply {
-                IBaseService.service(this).saveFromRemote(content, parentHostPeer!!)
-            }
+            IBaseService.service(serviceName!!).saveFromRemote(content, parentHostPeer!!)
         }
 
         override fun dataDelete(content: String, serviceName: String?) {
             val id: String = parse(content)
-            serviceName?.apply {
-                IBaseService.service(this).delete(id, parentHostPeer!!)
-            }
+            IBaseService.service(serviceName!!).delete(id, parentHostPeer!!)
         }
 
         override fun fieldValueAskFor(content: String, serviceName: String?) {
