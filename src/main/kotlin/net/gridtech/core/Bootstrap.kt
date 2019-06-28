@@ -1,8 +1,10 @@
 package net.gridtech.core
 
+import io.reactivex.Observable
 import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
-import net.gridtech.core.util.hostInfoPublisher
+import net.gridtech.core.util.*
+import java.util.concurrent.TimeUnit
 
 
 class Bootstrap(
@@ -16,14 +18,24 @@ class Bootstrap(
     val fieldService = FieldService(enableCache, fieldDao)
     val nodeService = NodeService(enableCache, nodeDao)
     val fieldValueService = FieldValueService(enableCache, fieldValueDao)
-
-    val hostSlave = HostSlave()
+    private val hostSlave = HostSlave(this)
 
     init {
         hostInfoPublisher.subscribe { hostInfo = it }
+        Observable.interval(INTERVAL_RUNNING_STATUS_REPORT, TimeUnit.MILLISECONDS).subscribe { reportRunningStatus() }
     }
-    companion object{
+
+    companion object {
         var hostInfo: IHostInfo? = null
     }
+
+    private fun reportRunningStatus() =
+            hostInfo?.nodeId?.apply {
+                fieldValueService.setFieldValueByFieldKey(this, KEY_FIELD_RUNNING_STATUS,
+                        stringfy(RunningStatus(
+                                PEER_ID,
+                                hostSlave.parentHostPeer
+                        )))
+            }
 
 }

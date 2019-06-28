@@ -51,12 +51,10 @@ data class DataChangedMessage(
 interface IHostInfo {
     var nodeId: String
     var nodeSecret: String
-    var parentAddress: String?
+    var parentEntryPoint: String?
 }
 
 data class RunningStatus(
-        var nodeId: String,
         var peer: String,
-        var connectedToParentNodeId: String?,
         var connectedToParentPeer: String?
 )

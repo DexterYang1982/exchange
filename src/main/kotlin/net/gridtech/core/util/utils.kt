@@ -1,9 +1,12 @@
 package net.gridtech.core.util
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import okhttp3.OkHttpClient
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.util.ArrayList
+import java.util.*
 
 
 private var lastTime: Long = 0
@@ -20,6 +23,9 @@ private fun nextSequence(): Long {
 fun currentTime(): Long = nextSequence()
 fun generateId(): String = "${nextSequence()}"
 
+val objectMapper = ObjectMapper().registerKotlinModule()
+inline fun <reified T> parse(content: String): T = objectMapper.readValue(content)
+fun stringfy(obj: Any): String = objectMapper.writeValueAsString(obj)
 
 fun compose(vararg id: String): String = id.joinToString(COMPOSE_ID_SEPARATOR)
 
