@@ -3,7 +3,7 @@ package net.gridtech.core.exchange
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers.io
 import net.gridtech.core.Bootstrap
-import net.gridtech.core.data.*
+import net.gridtech.core.data.IBaseService
 import net.gridtech.core.util.*
 import okhttp3.Request
 import okhttp3.Response
@@ -16,7 +16,7 @@ import kotlin.reflect.full.declaredMemberFunctions
 class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     private val commandMap: Map<String, KFunction<*>> = ISlave::class.declaredMemberFunctions.associateBy { it.name }
     var currentConnection: WebSocket? = null
-    var parentHostPeer: String? = null
+    var parentHostInstance: String? = null
 
     init {
         hostInfoPublisher
@@ -26,10 +26,10 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 .subscribe { connectToParent() }
         dataChangedPublisher
                 .filter { message ->
-                    message.serviceName == FieldValueService::class.simpleName!!
+                    message.serviceName == bootstrap.fieldValueService.serviceName
                             && currentConnection != null
-                            && parentHostPeer != null
-                            && message.peer != parentHostPeer
+                            && parentHostInstance != null
+                            && message.instance != parentHostInstance
                 }
                 .subscribeOn(io())
                 .subscribe {
@@ -42,7 +42,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
             Bootstrap.hostInfo?.let { hostInfo ->
                 hostInfo.parentEntryPoint
                         ?.let { parentEntryPoint ->
-                            Request.Builder().url("ws://$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&peer=$PEER_ID").build()
+                            Request.Builder().url("ws://$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&instance=$INSTANCE_ID").build()
                         }
             }?.let { request ->
                 val client = okHttpClient.newBuilder().build()
@@ -58,8 +58,8 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     }
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        parentHostPeer = response.header("peer")
-        println("Connected to parent peer $parentHostPeer")
+        parentHostInstance = response.header("instance")
+        println("Connected to parent instance $parentHostInstance")
     }
 
 
@@ -101,7 +101,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     private fun closeCurrentConnection() {
         currentConnection?.cancel()
         currentConnection = null
-        parentHostPeer = null
+        parentHostInstance = null
     }
 
 
@@ -109,10 +109,10 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
         val structureDataServiceToSync = ArrayList<IBaseService<*>>()
         override fun beginToSync(content: String, serviceName: String?) {
             structureDataServiceToSync.clear()
-            structureDataServiceToSync.add(IBaseService.service(NodeClassService::class.simpleName!!))
-            structureDataServiceToSync.add(IBaseService.service(FieldService::class.simpleName!!))
-            structureDataServiceToSync.add(IBaseService.service(NodeService::class.simpleName!!))
-            structureDataServiceToSync.add(IBaseService.service(FieldValueService::class.simpleName!!))
+            structureDataServiceToSync.add(bootstrap.nodeClassService)
+            structureDataServiceToSync.add(bootstrap.fieldService)
+            structureDataServiceToSync.add(bootstrap.nodeService)
+            structureDataServiceToSync.add(bootstrap.fieldValueService)
             serviceSyncFinishedFromMaster("", null)
         }
 
@@ -130,12 +130,12 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
         }
 
         override fun dataUpdate(content: String, serviceName: String?) {
-            IBaseService.service(serviceName!!).saveFromRemote(content, parentHostPeer!!)
+            bootstrap.service(serviceName!!).saveFromRemote(content, parentHostInstance!!)
         }
 
         override fun dataDelete(content: String, serviceName: String?) {
             val id: String = parse(content)
-            IBaseService.service(serviceName!!).delete(id, parentHostPeer!!)
+            bootstrap.service(serviceName!!).delete(id, parentHostInstance!!)
         }
 
         override fun fieldValueAskFor(content: String, serviceName: String?) {

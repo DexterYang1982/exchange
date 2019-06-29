@@ -1,9 +1,7 @@
 package net.gridtech.core.util
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 
-val PEER_ID = generateId()
+val INSTANCE_ID = generateId()
 
 const val COMPOSE_ID_SEPARATOR = "^"
 const val ID_NODE_ROOT = "ROOT"

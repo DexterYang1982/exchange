@@ -45,7 +45,7 @@ data class DataChangedMessage(
         val dataId: String,
         val serviceName: String,
         val type: ChangedType,
-        val peer: String
+        val instance: String
 )
 
 interface IHostInfo {
@@ -55,8 +55,8 @@ interface IHostInfo {
 }
 
 data class RunningStatus(
-        var peer: String,
-        var connectedToParentPeer: String?
+        var instance: String,
+        var connectedToParentInstance: String?
 )
 
 data class ChildScope(

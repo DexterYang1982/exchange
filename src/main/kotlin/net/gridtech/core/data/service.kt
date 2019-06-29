@@ -1,26 +1,16 @@
 package net.gridtech.core.data
 
-import net.gridtech.core.util.PEER_ID
+import net.gridtech.core.Bootstrap
+import net.gridtech.core.util.INSTANCE_ID
 import net.gridtech.core.util.compose
 import net.gridtech.core.util.currentTime
 import net.gridtech.core.util.dataChangedPublisher
 import java.util.concurrent.ConcurrentHashMap
 
+
 abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao: IBaseDao<T>) {
-    val serviceName: String = javaClass.simpleName
+    val serviceName = javaClass.simpleName!!
     protected val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
-
-    init {
-        services[serviceName] = this
-    }
-
-    companion object {
-        val services = HashMap<String, IBaseService<*>>()
-        fun service(name: String): IBaseService<*> {
-            return services[name]!!
-        }
-    }
-
     open fun getAll(): List<T> = dao.getAll()
     open fun getById(id: String): T? {
         var data = cache?.get(id)
@@ -35,51 +25,53 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
         return data
     }
 
-    open fun save(data: T, peer: String? = null) {
+    open fun save(data: T, instance: String? = null) {
         cache?.put(data.id, data)
         dao.save(data)
         dataChangedPublisher.onNext(DataChangedMessage(
                 data.id,
                 serviceName,
                 ChangedType.UPDATE,
-                peer ?: PEER_ID
+                instance ?: INSTANCE_ID
         ))
     }
 
-    fun saveFromRemote(content: String, peer: String) = save(parseData(content), peer)
+    fun saveFromRemote(content: String, instance: String) = save(parseData(content), instance)
     abstract fun parseData(content: String): T
 
-    open fun delete(id: String, peer: String? = null) {
+    open fun delete(id: String, instance: String? = null) {
         cache?.remove(id)
         dao.delete(id)
         dataChangedPublisher.onNext(DataChangedMessage(
                 id,
                 serviceName,
                 ChangedType.DELETE,
-                peer ?: PEER_ID
+                instance ?: INSTANCE_ID
         ))
     }
 }
 
-class NodeClassService(enableCache: Boolean, dao: INodeClassDao) : IBaseService<INodeClass>(enableCache, dao) {
+
+class NodeClassService(enableCache: Boolean, dao: INodeClassDao, private val bootstrap: Bootstrap) : IBaseService<INodeClass>(enableCache, dao) {
     override fun parseData(content: String): INodeClass = NodeClassStub.parseFromString(content)
 }
 
-class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao) : IBaseService<IField>(enableCache, fieldDao) {
+class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao, private val bootstrap: Bootstrap) : IBaseService<IField>(enableCache, fieldDao) {
+
     override fun parseData(content: String): IField = FieldStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<IField> = fieldDao.getByNodeClassId(nodeClass.id)
-    override fun delete(id: String, peer: String?) {
-        val fieldValueService = service(FieldValueService::class.simpleName!!) as FieldValueService
+    override fun delete(id: String, instance: String?) {
         getById(id)?.apply {
-            fieldValueService.getByField(this).forEach {
-                fieldValueService.delete(it.id)
+            bootstrap.fieldValueService.getByField(this).forEach {
+                bootstrap.fieldValueService.delete(it.id)
             }
         }
-        super.delete(id, peer)
+        super.delete(id, instance)
     }
 }
 
-class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseService<INode>(enableCache, nodeDao) {
+class NodeService(enableCache: Boolean, private val nodeDao: INodeDao, private val bootstrap: Bootstrap) : IBaseService<INode>(enableCache, nodeDao) {
+
     override fun parseData(content: String): INode = NodeStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<INode> = nodeDao.getByNodeClassId(nodeClass.id)
     fun getByBranch(branchNode: INode): List<INode> = nodeDao.getByBranchNodeId(branchNode.id)
@@ -104,20 +96,20 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao) : IBaseSe
                 add(branchNode)
             }
 
-    override fun delete(id: String, peer: String?) {
-        val fieldValueService = service(FieldValueService::class.simpleName!!) as FieldValueService
+    override fun delete(id: String, instance: String?) {
         getById(id)?.apply {
-            fieldValueService.getByNode(this).forEach {
-                fieldValueService.delete(it.id)
+            bootstrap.fieldValueService.getByNode(this).forEach {
+                bootstrap.fieldValueService.delete(it.id)
             }
         }
-        super.delete(id, peer)
+        super.delete(id, instance)
     }
 }
 
-class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
+class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao, private val bootstrap: Bootstrap) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
+
     override fun parseData(content: String): IFieldValue = FieldValueStub.parseFromString(content)
-    override fun delete(id: String, peer: String?) {
+    override fun delete(id: String, instance: String?) {
         cache?.remove(id)
         fieldValueDao.delete(id)
     }
@@ -130,20 +122,16 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
             valueNode.id == childNodeId || valueNode.path.contains(childNodeId) || valueField.through
 
     fun getFieldValueByFieldKey(nodeId: String, fieldKey: String): IFieldValue? {
-        val nodeService = service(NodeService::class.simpleName!!) as NodeService
-        val fieldService = service(FieldService::class.simpleName!!) as FieldService
-        return nodeService.getById(nodeId)?.let { node ->
-            fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
+        return bootstrap.nodeService.getById(nodeId)?.let { node ->
+            bootstrap.fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
                 getById(compose(node.id, field.id))
             }
         }
     }
 
     fun setFieldValueByFieldKey(nodeId: String, fieldKey: String, value: String, session: String? = null) {
-        val nodeService = service(NodeService::class.simpleName!!) as NodeService
-        val fieldService = service(FieldService::class.simpleName!!) as FieldService
-        nodeService.getById(nodeId)?.let { node ->
-            fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
+        bootstrap.nodeService.getById(nodeId)?.let { node ->
+            bootstrap.fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
                 save(FieldValueStub(
                         id = compose(node.id, field.id),
                         nodeId = node.id,
@@ -151,7 +139,7 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
                         value = value,
                         session = session ?: "",
                         updateTime = currentTime()
-                ), PEER_ID)
+                ), INSTANCE_ID)
             }
         }
     }
