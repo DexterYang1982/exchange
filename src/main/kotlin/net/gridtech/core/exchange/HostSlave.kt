@@ -42,7 +42,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
             Bootstrap.hostInfo?.let { hostInfo ->
                 hostInfo.parentEntryPoint
                         ?.let { parentEntryPoint ->
-                            Request.Builder().url("ws://$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&instance=$INSTANCE_ID").build()
+                            Request.Builder().url("$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&instance=$INSTANCE_ID").build()
                         }
             }?.let { request ->
                 val client = okHttpClient.newBuilder().build()
