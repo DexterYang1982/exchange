@@ -18,6 +18,7 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.9.9")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.9")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation(kotlin("stdlib-jdk8"))
 }
 
