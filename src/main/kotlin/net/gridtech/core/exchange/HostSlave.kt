@@ -5,10 +5,7 @@ import io.reactivex.schedulers.Schedulers.io
 import net.gridtech.core.Bootstrap
 import net.gridtech.core.data.IBaseService
 import net.gridtech.core.util.*
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
+import okhttp3.*
 import java.util.concurrent.TimeUnit
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
@@ -25,32 +22,36 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 .filter { currentConnection == null }
                 .subscribe { connectToParent() }
         dataChangedPublisher
+                .subscribeOn(io())
                 .filter { message ->
                     message.serviceName == bootstrap.fieldValueService.serviceName
                             && currentConnection != null
                             && parentHostInstance != null
                             && message.instance != parentHostInstance
                 }
-                .subscribeOn(io())
-                .subscribe {
-
+                .subscribe {message->
+                    bootstrap.fieldValueService.getById(message.dataId)?.apply {
+                        send(IMaster<*>::fieldValueUpdate, this)
+                    }
                 }
     }
 
     private fun connectToParent() {
         try {
-            Bootstrap.hostInfo?.let { hostInfo ->
-                hostInfo.parentEntryPoint
-                        ?.let { parentEntryPoint ->
-                            Request.Builder().url("$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&instance=$INSTANCE_ID").build()
-                        }
-            }?.let { request ->
-                val client = okHttpClient.newBuilder().build()
-                currentConnection = client.newWebSocket(request, this)
-                client
-            }?.apply {
-                dispatcher().executorService().shutdown()
-            }
+            Bootstrap.hostInfo
+                    ?.let { hostInfo ->
+                        hostInfo.parentEntryPoint
+                                ?.let { parentEntryPoint ->
+                                    val url = "$parentEntryPoint?nodeId=${hostInfo.nodeId}&nodeSecret=${hostInfo.nodeSecret}&instance=$INSTANCE_ID"
+                                    Request.Builder().url(url).build()
+                                }
+                    }?.let { request ->
+                        val client = OkHttpClient().newBuilder().build()
+                        currentConnection = client.newWebSocket(request, this)
+                        client
+                    }?.apply {
+                        dispatcher().executorService().shutdown()
+                    }
         } catch (e: Throwable) {
             closeCurrentConnection()
             System.err.println("connect to parent error ${e.message}")

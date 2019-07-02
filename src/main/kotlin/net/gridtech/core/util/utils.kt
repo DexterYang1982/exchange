@@ -48,6 +48,3 @@ fun getNetworkAddress(): List<String> {
     }
     return result
 }
-
-
-val okHttpClient = OkHttpClient()
