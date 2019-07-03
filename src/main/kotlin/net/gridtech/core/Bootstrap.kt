@@ -1,6 +1,7 @@
 package net.gridtech.core
 
 import io.reactivex.Observable
+import io.reactivex.observables.ConnectableObservable
 import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
 import net.gridtech.core.util.*
@@ -46,4 +47,18 @@ class Bootstrap(
                         )))
             }
 
+    fun <T : IBaseData> dataPublisher(serviceName: String): ConnectableObservable<Triple<ChangedType, String, T?>> =
+            Observable.concat(
+                    Observable.fromIterable(service(serviceName).getAll())
+                            .map { Triple(ChangedType.UPDATE, it.id, cast<T>(it)) },
+                    dataChangedPublisher.filter { it.serviceName == serviceName }
+                            .map {
+                                Triple(it.type,
+                                        it.dataId,
+                                        if (it.type == ChangedType.UPDATE)
+                                            cast<T>(service(serviceName).getById(it.dataId))
+                                        else
+                                            null)
+                            }
+            ).publish()
 }

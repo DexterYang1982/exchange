@@ -3,7 +3,6 @@ package net.gridtech.core.util
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import okhttp3.OkHttpClient
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.*
@@ -48,3 +47,7 @@ fun getNetworkAddress(): List<String> {
     }
     return result
 }
+
+@Suppress("UNCHECKED_CAST")
+fun <T> cast(d: Any?): T? =
+        d?.let { it as T }
