@@ -40,7 +40,8 @@ data class NodeStub(
         override var tags: List<String>,
         override var nodeClassId: String,
         override var path: List<String>,
-        override var externalScope: List<String>,
+        override var externalNodeIdScope: List<String>,
+        override var externalNodeClassTagScope: List<String>,
         override var updateTime: Long
 ) : INode{
     companion object {

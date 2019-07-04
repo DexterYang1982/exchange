@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao: IBaseDao<T>) {
     val serviceName = javaClass.simpleName!!
-    protected val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
+    private val cache: ConcurrentHashMap<String, T>? = if (enableCache) ConcurrentHashMap() else null
     open fun getAll(): List<T> = dao.getAll()
     open fun getById(id: String): T? {
         var data = cache?.get(id)
@@ -52,8 +52,9 @@ abstract class IBaseService<T : IBaseData>(enableCache: Boolean, private val dao
 }
 
 
-class NodeClassService(enableCache: Boolean, dao: INodeClassDao, private val bootstrap: Bootstrap) : IBaseService<INodeClass>(enableCache, dao) {
+class NodeClassService(enableCache: Boolean, private val nodeClassDao: INodeClassDao, private val bootstrap: Bootstrap) : IBaseService<INodeClass>(enableCache, nodeClassDao) {
     override fun parseData(content: String): INodeClass = NodeClassStub.parseFromString(content)
+    fun getByTags(tags: List<String>): List<INodeClass> = nodeClassDao.getByTags(tags)
 }
 
 class FieldService(enableCache: Boolean, private val fieldDao: IFieldDao, private val bootstrap: Bootstrap) : IBaseService<IField>(enableCache, fieldDao) {
@@ -75,16 +76,15 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao, private v
     override fun parseData(content: String): INode = NodeStub.parseFromString(content)
     fun getByNodeClass(nodeClass: INodeClass): List<INode> = nodeDao.getByNodeClassId(nodeClass.id)
     fun getByBranch(branchNode: INode): List<INode> = nodeDao.getByBranchNodeId(branchNode.id)
-    fun getNodeScope(id: String): Set<INode> =
-            getById(id)?.let { node ->
-                val scope = getNodeBranchScope(node)
-                node.externalScope.forEach { branchNodeId ->
-                    scope.addAll(getById(branchNodeId)?.let { branchNode ->
-                        getNodeBranchScope(branchNode)
-                    } ?: emptySet())
-                }
-                scope
-            } ?: emptySet()
+    fun getNodeScope(node: INode): Set<INode> {
+        val scope = getNodeBranchScope(node)
+        node.externalNodeIdScope.forEach { branchNodeId ->
+            scope.addAll(getById(branchNodeId)?.let { branchNode ->
+                getNodeBranchScope(branchNode)
+            } ?: emptySet())
+        }
+        return scope
+    }
 
     private fun getNodeBranchScope(branchNode: INode): MutableSet<INode> =
             getByBranch(branchNode).toMutableSet().apply {
@@ -109,15 +109,9 @@ class NodeService(enableCache: Boolean, private val nodeDao: INodeDao, private v
 class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldValueDao, private val bootstrap: Bootstrap) : IBaseService<IFieldValue>(enableCache, fieldValueDao) {
 
     override fun parseData(content: String): IFieldValue = FieldValueStub.parseFromString(content)
-    override fun delete(id: String, instance: String?) {
-        cache?.remove(id)
-        fieldValueDao.delete(id)
-    }
-
     fun getByNode(node: INode): List<IFieldValue> = fieldValueDao.getByNodeId(node.id)
     fun getByField(field: IField): List<IFieldValue> = fieldValueDao.getByFieldId(field.id)
     fun getSince(id: String, since: Long) = fieldValueDao.getSince(id, since)
-
     fun valueSyncToChild(childNodeId: String, valueNode: INode, valueField: IField): Boolean =
             valueNode.id == childNodeId || valueNode.path.contains(childNodeId) || valueField.through
 

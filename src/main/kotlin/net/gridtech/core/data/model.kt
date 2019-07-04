@@ -26,7 +26,8 @@ interface IField : IStructureData {
 interface INode : IStructureData {
     var nodeClassId: String
     var path: List<String>
-    var externalScope: List<String>
+    var externalNodeIdScope: List<String>
+    var externalNodeClassTagScope: List<String>
 }
 
 interface IFieldValue : IBaseData {

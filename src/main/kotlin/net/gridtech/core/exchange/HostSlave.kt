@@ -3,6 +3,7 @@ package net.gridtech.core.exchange
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers.io
 import net.gridtech.core.Bootstrap
+import net.gridtech.core.data.ChangedType
 import net.gridtech.core.data.IBaseService
 import net.gridtech.core.util.*
 import okhttp3.*
@@ -25,11 +26,12 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                 .subscribeOn(io())
                 .filter { message ->
                     message.serviceName == bootstrap.fieldValueService.serviceName
+                            && message.type == ChangedType.UPDATE
+                            && message.instance != parentHostInstance
                             && currentConnection != null
                             && parentHostInstance != null
-                            && message.instance != parentHostInstance
                 }
-                .subscribe {message->
+                .subscribe { message ->
                     bootstrap.fieldValueService.getById(message.dataId)?.apply {
                         send(IMaster<*>::fieldValueUpdate, this)
                     }

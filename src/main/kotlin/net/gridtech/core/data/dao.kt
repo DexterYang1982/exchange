@@ -8,7 +8,9 @@ interface IBaseDao<T : IBaseData> {
     fun delete(id: String)
 }
 
-interface INodeClassDao : IBaseDao<INodeClass>
+interface INodeClassDao : IBaseDao<INodeClass>{
+    fun getByTags(tags:List<String>): List<INodeClass>
+}
 
 interface IFieldDao : IBaseDao<IField> {
     fun getByNodeClassId(nodeClassId: String): List<IField>
