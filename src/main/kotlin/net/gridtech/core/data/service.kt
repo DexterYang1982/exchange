@@ -123,6 +123,21 @@ class FieldValueService(enableCache: Boolean, private val fieldValueDao: IFieldV
         }
     }
 
+    fun setFieldValue(nodeId: String, fieldId: String, value: String, session: String? = null) {
+        bootstrap.nodeService.getById(nodeId)?.let { node ->
+            bootstrap.fieldService.getById(fieldId)?.let { field ->
+                save(FieldValueStub(
+                        id = compose(node.id, field.id),
+                        nodeId = node.id,
+                        fieldId = field.id,
+                        value = value,
+                        session = session ?: "",
+                        updateTime = currentTime()
+                ), INSTANCE_ID)
+            }
+        }
+    }
+
     fun setFieldValueByFieldKey(nodeId: String, fieldKey: String, value: String, session: String? = null) {
         bootstrap.nodeService.getById(nodeId)?.let { node ->
             bootstrap.fieldService.getById(compose(node.nodeClassId, fieldKey))?.let { field ->
