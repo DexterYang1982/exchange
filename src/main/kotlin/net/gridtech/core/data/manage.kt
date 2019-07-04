@@ -12,4 +12,7 @@ interface IManager {
                         name: String,
                         alias: String,
                         description: Any? = null):INodeClass
+
+
+    fun nodeClassDelete(id: String)
 }
