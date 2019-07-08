@@ -1,5 +1,7 @@
 package net.gridtech.core.data
 
+import net.gridtech.core.util.compose
+
 
 interface IBaseData {
     var id: String
@@ -21,6 +23,8 @@ interface INodeClass : IStructureData {
 interface IField : IStructureData {
     var nodeClassId: String
     var through: Boolean
+
+    fun match(key: String) = this.id == compose(nodeClassId, key)
 }
 
 interface INode : IStructureData {
