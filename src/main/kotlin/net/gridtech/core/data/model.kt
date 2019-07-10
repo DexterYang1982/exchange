@@ -24,7 +24,7 @@ interface IField : IStructureData {
     var nodeClassId: String
     var through: Boolean
 
-    fun match(key: String) = this.id == compose(nodeClassId, key)
+    fun matchKey(key: String) = this.id == compose(nodeClassId, key)
 }
 
 interface INode : IStructureData {
