@@ -43,7 +43,8 @@ interface IFieldValue : IBaseData {
 
 enum class ChangedType {
     UPDATE,
-    DELETE
+    DELETE,
+    FINISHED
 }
 
 data class DataChangedMessage(

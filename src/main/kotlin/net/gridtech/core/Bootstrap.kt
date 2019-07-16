@@ -50,6 +50,7 @@ class Bootstrap(
             Observable.concat(
                     Observable.fromIterable(service(serviceName).getAll())
                             .map { Triple(ChangedType.UPDATE, it.id, cast<T>(it)) },
+                    Observable.just(Triple(ChangedType.FINISHED, "", null)),
                     dataChangedPublisher.filter { it.serviceName == serviceName }
                             .map {
                                 Triple(it.type,
