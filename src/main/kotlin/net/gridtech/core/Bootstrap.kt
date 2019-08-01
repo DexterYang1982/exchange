@@ -1,5 +1,6 @@
 package net.gridtech.core
 
+import fi.iki.elonen.NanoHTTPD
 import io.reactivex.Observable
 import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
@@ -61,4 +62,37 @@ class Bootstrap(
                                             null)
                             }
             )
+
+    fun startHostInfoChangServer(port: Int) {
+        val server = object : NanoHTTPD(port) {
+            override fun serve(session: IHTTPSession?): Response {
+                return if (session?.uri?.endsWith("/hostInfo") == true) {
+                    newFixedLengthResponse(hostInfo?.let { stringfy(it) } ?: "{}").apply {
+                        mimeType="application/json"
+                    }
+                } else if (session?.uri?.endsWith("/updateHostInfo") == true) {
+                    val map = HashMap<String, String>()
+                    session.parseBody(map)
+                    val body = map["postData"]!!
+                    try {
+                        val hostInfo: HostInfoStub = parse(body)
+                        hostInfoPublisher.onNext(hostInfo)
+                        newFixedLengthResponse("done")
+                    } catch (e: Throwable) {
+                        newFixedLengthResponse(e.message)
+                    }
+                } else {
+                    newFixedLengthResponse("request not found")
+                }
+            }
+        }
+        server.start()
+        System.err.println("Start HostInfo Chang Server at $port use /hostInfo or /updateHostInfo")
+    }
+
+    data class HostInfoStub(
+            override var nodeId: String,
+            override var nodeSecret: String,
+            override var parentEntryPoint: String?
+    ) : IHostInfo
 }

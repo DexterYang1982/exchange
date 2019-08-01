@@ -18,7 +18,9 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
 
     init {
         hostInfoPublisher
-                .subscribe { closeCurrentConnection() }
+                .subscribe { 
+                    closeCurrentConnection() 
+                }
         Observable.interval(INTERVAL_TRY_CONNECT_TO_PARENT, TimeUnit.MILLISECONDS)
                 .filter { currentConnection == null }
                 .subscribe { connectToParent() }
