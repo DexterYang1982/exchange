@@ -54,7 +54,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
                         currentConnection = client.newWebSocket(request, this)
                         client
                     }?.apply {
-                        dispatcher().executorService().shutdown()
+                        dispatcher.executorService.shutdown()
                     }
         } catch (e: Throwable) {
             closeCurrentConnection()
@@ -86,7 +86,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        System.err.println("onFailure ${t.message} ${response?.code()}")
+        System.err.println("onFailure ${t.message} ${response?.code}")
         closeCurrentConnection()
     }
 

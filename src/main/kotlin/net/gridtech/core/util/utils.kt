@@ -23,7 +23,7 @@ fun currentTime(): Long = nextSequence()
 fun generateId(): String = "${nextSequence()}"
 
 val objectMapper = ObjectMapper().registerKotlinModule()
-inline fun <reified T> parse(content: String): T = objectMapper.readValue(content)
+inline fun <reified T : Any> parse(content: String): T = objectMapper.readValue(content)
 fun stringfy(obj: Any): String = objectMapper.writeValueAsString(obj)
 inline fun <reified T : Any> clone(dataClass: T) = parse<T>(stringfy(dataClass))
 
