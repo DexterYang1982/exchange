@@ -64,6 +64,7 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
         parentHostInstance = response.header("instance")
+        connectionChangedPublisher.onNext(true)
         println("Connected to parent instance $parentHostInstance")
     }
 
@@ -81,11 +82,13 @@ class HostSlave(private val bootstrap: Bootstrap) : WebSocketListener() {
 
 
     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+        connectionChangedPublisher.onNext(false)
         System.err.println("onClosed code $code reason $reason")
         closeCurrentConnection()
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+        connectionChangedPublisher.onNext(false)
         System.err.println("onFailure ${t.message} ${response?.code}")
         closeCurrentConnection()
     }

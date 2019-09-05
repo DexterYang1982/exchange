@@ -2,6 +2,7 @@ package net.gridtech.core
 
 import fi.iki.elonen.NanoHTTPD
 import io.reactivex.Observable
+import io.reactivex.subjects.PublishSubject
 import net.gridtech.core.data.*
 import net.gridtech.core.exchange.HostSlave
 import net.gridtech.core.util.*
@@ -22,6 +23,8 @@ class Bootstrap(
     private val services = HashMap<String, IBaseService<*>>()
     private val hostSlave = HostSlave(this)
 
+    private var connected = false
+
     init {
         services[nodeClassService.serviceName] = nodeClassService
         services[fieldService.serviceName] = fieldService
@@ -29,6 +32,7 @@ class Bootstrap(
         services[fieldValueService.serviceName] = fieldValueService
 
         hostInfoPublisher.subscribe { hostInfo = it }
+        connectionChangedPublisher.subscribe { connected = it }
         Observable.interval(INTERVAL_RUNNING_STATUS_REPORT, TimeUnit.MILLISECONDS).subscribe { reportRunningStatus() }
     }
 
@@ -37,6 +41,8 @@ class Bootstrap(
     }
 
     fun service(name: String): IBaseService<*> = services[name]!!
+
+    fun connectionObservable() = Observable.concat(Observable.just(connected), connectionChangedPublisher)
 
     private fun reportRunningStatus() =
             hostInfo?.nodeId?.apply {
@@ -68,7 +74,7 @@ class Bootstrap(
             override fun serve(session: IHTTPSession?): Response {
                 return if (session?.uri?.endsWith("/hostInfo") == true) {
                     newFixedLengthResponse(hostInfo?.let { stringfy(it) } ?: "{}").apply {
-                        mimeType="application/json"
+                        mimeType = "application/json"
                     }
                 } else if (session?.uri?.endsWith("/updateHostInfo") == true) {
                     val map = HashMap<String, String>()
